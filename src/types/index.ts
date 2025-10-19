@@ -1,0 +1,118 @@
+export interface LookupResult {
+  status: 'ok' | 'error';
+  message?: string;
+  data?: LookupData;
+}
+
+export interface LookupData {
+  plate: string;
+  vehicleType: string;
+  captcha?: string;
+  violations?: Violation[];
+  totalViolations?: number;
+  totalPaidViolations?: number;
+  totalUnpaidViolations?: number;
+  lookupTime?: string;
+  source?: string;
+}
+
+export interface Violation {
+  plate: string;
+  violationNumber: number;
+  plateColor?: string;
+  vehicleType?: string;
+  violationTime?: string;
+  location?: string;
+  violation?: string;
+  status?: string;
+  resolutionPlace?: string;
+  resolutionDepartment?: string;
+  resolutionAddress?: string;
+  resolutionPhone?: string;
+  fine?: string;
+  message?: string;
+  rawPreview?: string;
+}
+
+export interface LookupOptions {
+  captchaText?: string;
+  saveCaptcha?: boolean;
+}
+
+export interface UserState {
+  step: 'ASK_VEHICLE_TYPE' | 'ASK_PLATE' | 'FETCHING';
+  vehicleType?: string;
+  plate?: string;
+}
+
+export interface CaptchaResponse {
+  buffer: Buffer;
+  contentType: string;
+}
+
+export interface AutocaptchaResponse {
+  success?: boolean;
+  captcha?: string;
+  result?: string;
+  data?: {
+    text?: string;
+  };
+  text?: string;
+  message?: string;
+}
+
+export interface CSGTAjaxResponse {
+  success: string | boolean;
+  href?: string;
+  message?: string;
+}
+
+export interface ViolationCounts {
+  totalPaidViolations: number;
+  totalUnpaidViolations: number;
+}
+
+export interface TelegramCallbackData {
+  new_search: string;
+  refresh: string;
+}
+
+// Remove Express interfaces as they conflict with Express types
+
+export interface Config {
+  port: number;
+  csgt: {
+    baseUrl: string;
+    lookupUrl: string;
+    captchaEndpoint: string;
+    ajaxValidateUrl: string;
+  };
+  captcha: {
+    defaultMethod: 'tesseract' | 'autocaptcha';
+    tesseract: {
+      language: string;
+      options: {
+        tessedit_char_whitelist: string;
+        tessedit_pageseg_mode: string;
+        tessedit_ocr_engine_mode: string;
+      };
+    };
+    autocaptcha: {
+      url: string;
+      key: string;
+      timeout: number;
+    };
+  };
+  telegram: {
+    token: string;
+    polling: boolean;
+  };
+  http: {
+    timeout: number;
+    userAgent: string;
+  };
+  debug: {
+    saveCaptcha: boolean;
+    saveResultHtml: boolean;
+  };
+}
