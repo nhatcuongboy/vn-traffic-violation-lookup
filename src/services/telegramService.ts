@@ -33,7 +33,7 @@ export class TelegramService {
         { command: 'menu', description: '📋 Hiển thị menu chính' },
         { command: 'help', description: '❓ Hướng dẫn sử dụng' },
       ]);
-      console.log('📋 Bot commands menu: ✅ Configured');
+      console.log('📋 Bot Commands Menu: ✅ Configured');
     } catch (error) {
       console.error('[ERROR] Failed to setup bot commands:', error);
     }
@@ -125,12 +125,16 @@ Chọn một tùy chọn bên dưới:`;
 
     const options = {
       reply_markup: {
-        keyboard: [
-          [{ text: '🔍 Tra cứu vi phạm' }, { text: '❓ Hướng dẫn' }],
-          [{ text: '📋 Menu chính' }, { text: '🆘 Hỗ trợ' }],
+        inline_keyboard: [
+          [
+            { text: '🔍 Tra cứu vi phạm', callback_data: 'start_search' },
+            { text: '❓ Hướng dẫn', callback_data: 'show_help' },
+          ],
+          [
+            { text: '📋 Menu chính', callback_data: 'show_menu' },
+            { text: '🆘 Hỗ trợ', callback_data: 'show_support' },
+          ],
         ],
-        resize_keyboard: true,
-        one_time_keyboard: false,
       },
       parse_mode: 'Markdown' as ParseMode,
     };
@@ -222,29 +226,6 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
     userState: UserState,
   ): Promise<void> {
     try {
-      // Handle custom keyboard button presses
-      if (text === '🔍 Tra cứu vi phạm') {
-        this.startSearch(chatId);
-        return;
-      } else if (text === '❓ Hướng dẫn') {
-        this.showHelp(chatId);
-        return;
-      } else if (text === '📋 Menu chính') {
-        this.showMainMenu(chatId);
-        return;
-      } else if (text === '🆘 Hỗ trợ') {
-        await this.bot.sendMessage(
-          chatId,
-          '🆘 *Hỗ trợ kỹ thuật*\n\n' +
-            'Nếu bạn gặp vấn đề khi sử dụng bot, vui lòng:\n' +
-            '• Kiểm tra lại biển số xe\n' +
-            '• Thử lại sau vài phút\n' +
-            '• Sử dụng lệnh /menu để quay lại menu chính\n\n' +
-            'Bot được phát triển để hỗ trợ tra cứu vi phạm giao thông một cách nhanh chóng và chính xác.',
-          { parse_mode: 'Markdown' },
-        );
-        return;
-      }
 
       // Only handle plate number input (vehicle type is selected via buttons)
       if (userState.step === 'ASK_PLATE') {
@@ -326,6 +307,23 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
       // Show main menu
       await this.bot.answerCallbackQuery(callbackQuery.id);
       this.showMainMenu(chatId);
+    } else if (callbackQuery.data === 'show_help') {
+      // Show help
+      await this.bot.answerCallbackQuery(callbackQuery.id);
+      this.showHelp(chatId);
+    } else if (callbackQuery.data === 'show_support') {
+      // Show support
+      await this.bot.answerCallbackQuery(callbackQuery.id);
+      await this.bot.sendMessage(
+        chatId,
+        '🆘 *Hỗ trợ kỹ thuật*\n\n' +
+          'Nếu bạn gặp vấn đề khi sử dụng bot, vui lòng:\n' +
+          '• Kiểm tra lại biển số xe\n' +
+          '• Thử lại sau vài phút\n' +
+          '• Sử dụng lệnh /menu để quay lại menu chính\n\n' +
+          'Bot được phát triển để hỗ trợ tra cứu vi phạm giao thông một cách nhanh chóng và chính xác.',
+        { parse_mode: 'Markdown' },
+      );
     } else if (callbackQuery.data === 'change_vehicle_type') {
       // Handle change vehicle type
       await this.bot.answerCallbackQuery(callbackQuery.id);

@@ -8,8 +8,7 @@ Vietnam traffic violation lookup tool with automatic captcha solving.
 
 ```bash
 npm install
-mkdir -p ./tessdata
-curl -L -o ./tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
+curl -L -o eng.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
 ```
 
 ### 2. Configure Environment Variables

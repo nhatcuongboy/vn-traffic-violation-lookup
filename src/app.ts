@@ -23,6 +23,11 @@ app.get('/', (_, res) => {
 // Monitoring endpoint
 app.get('/ping', (_, res) => res.send('pong'));
 
+// Handle favicon.ico requests
+app.get('/favicon.ico', (_, res) => {
+  res.status(204).end(); // No Content
+});
+
 app.use('/api', violationRoutes);
 
 // Error handling middleware

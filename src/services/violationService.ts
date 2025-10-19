@@ -184,7 +184,7 @@ export class ViolationService {
     plate: string,
     vehicleType: string,
     options: LookupOptions,
-    maxRetries: number = 5,
+    maxRetries: number = 10,
   ): Promise<LookupResult> {
     let lastError: Error | null = null;
     let totalRetryCaptcha = 0;
