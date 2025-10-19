@@ -226,7 +226,6 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
     userState: UserState,
   ): Promise<void> {
     try {
-
       // Only handle plate number input (vehicle type is selected via buttons)
       if (userState.step === 'ASK_PLATE') {
         userState.plate = text;
@@ -650,7 +649,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
       'OCR failed to extract text',
     ];
 
-    return captchaKeywords.some(keyword =>
+    return captchaKeywords.some((keyword) =>
       errorMessage.toLowerCase().includes(keyword.toLowerCase()),
     );
   }

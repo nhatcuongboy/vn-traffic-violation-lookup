@@ -83,17 +83,18 @@ export class ViolationService {
     const counts = this.calculateCounts(violations);
 
     // Add summary message
-    let summaryMessage = `📊 Thống kê vi phạm:\n` +
+    let summaryMessage =
+      `📊 Thống kê vi phạm:\n` +
       `🔸 Tổng số vi phạm: ${counts.total}\n` +
       `✅ Đã nộp phạt: ${counts.paid}\n` +
       `❌ Chưa nộp phạt: ${counts.unpaid}\n`;
-    
+
     if (retryCount !== undefined && retryCount > 0) {
       summaryMessage += `🔄 Số lần thử lại captcha: ${retryCount}\n`;
     }
-    
+
     summaryMessage += `\n=== Chi tiết các vi phạm ===\n`;
-    
+
     messages.push(summaryMessage);
 
     for (const violation of violations) {
@@ -199,12 +200,12 @@ export class ViolationService {
           options,
           forceRefreshCaptcha,
         );
-        
+
         // Add captcha retry count to successful result
         if (result.status === 'ok' && result.data) {
           result.data.totalRetryCaptcha = totalRetryCaptcha;
         }
-        
+
         return result;
       } catch (error: unknown) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -226,7 +227,7 @@ export class ViolationService {
         console.warn(`[WARN] Service: Retryable error on attempt ${attempt}:`, warnMsg);
 
         // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
 
         // For captcha validation errors, try to get a fresh captcha
         const errorMsg = error instanceof Error ? error.message : String(error);

@@ -63,7 +63,7 @@ const solveWithTesseract = async (imageBuffer: Buffer, contentType: string): Pro
     if (confidence < 50) {
       correctedText = cleanedText
         .split('')
-        .map(char => {
+        .map((char) => {
           const correction = corrections[char];
           return correction || char;
         })
