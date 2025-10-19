@@ -20,6 +20,9 @@ app.get('/', (_, res) => {
   });
 });
 
+// Monitoring endpoint
+app.get('/ping', (_, res) => res.send('pong'));
+
 app.use('/api', violationRoutes);
 
 // Error handling middleware
