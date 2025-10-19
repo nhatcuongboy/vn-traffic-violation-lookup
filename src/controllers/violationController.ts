@@ -122,6 +122,7 @@ export class ViolationController {
       const formattedViolations = this.violationService.formatViolations(
         result.data?.violations || [],
         'telegram',
+        result.data?.totalRetryCaptcha,
       );
 
       res.json({
@@ -186,6 +187,7 @@ export class ViolationController {
             body { font-family: Arial, sans-serif; margin: 20px; }
             .violation-item { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
             .violation-item h3 { color: #d32f2f; margin-top: 0; }
+            .retry-info { background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin: 10px 0; }
           </style>
         </head>
         <body>
@@ -195,6 +197,7 @@ export class ViolationController {
           <p><strong>Tổng số vi phạm:</strong> ${result.data?.totalViolations}</p>
           <p><strong>Số vi phạm đã nộp phạt:</strong> ${result.data?.totalPaidViolations}</p>
           <p><strong>Số vi phạm chưa nộp phạt:</strong> ${result.data?.totalUnpaidViolations}</p>
+          ${result.data?.totalRetryCaptcha !== undefined ? `<div class="retry-info"><strong>Số lần thử lại captcha:</strong> ${result.data.totalRetryCaptcha}</div>` : ''}
           ${htmlViolations}
         </body>
         </html>

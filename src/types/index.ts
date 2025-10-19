@@ -14,6 +14,7 @@ export interface LookupData {
   totalUnpaidViolations?: number;
   lookupTime?: string;
   source?: string;
+  totalRetryCaptcha?: number;
 }
 
 export interface Violation {

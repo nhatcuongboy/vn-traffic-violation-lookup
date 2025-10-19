@@ -58,10 +58,11 @@ export class ViolationService {
   formatViolations(
     violations: Violation[],
     format: 'json' | 'telegram' | 'html' = 'json',
+    retryCount?: number,
   ): Violation[] | string[] | string {
     switch (format) {
       case 'telegram':
-        return this.formatForTelegram(violations);
+        return this.formatForTelegram(violations, retryCount);
       case 'html':
         return this.formatForHtml(violations);
       case 'json':
@@ -73,7 +74,7 @@ export class ViolationService {
   /**
    * Format violations for Telegram Bot
    */
-  private formatForTelegram(violations: Violation[]): string[] {
+  private formatForTelegram(violations: Violation[], retryCount?: number): string[] {
     if (!violations || violations.length === 0) {
       return ['✅ Không tìm thấy vi phạm nào cho phương tiện này.'];
     }
@@ -82,13 +83,18 @@ export class ViolationService {
     const counts = this.calculateCounts(violations);
 
     // Add summary message
-    messages.push(
-      `📊 Thống kê vi phạm:\n` +
-        `🔸 Tổng số vi phạm: ${counts.total}\n` +
-        `✅ Đã nộp phạt: ${counts.paid}\n` +
-        `❌ Chưa nộp phạt: ${counts.unpaid}\n\n` +
-        `=== Chi tiết các vi phạm ===\n`,
-    );
+    let summaryMessage = `📊 Thống kê vi phạm:\n` +
+      `🔸 Tổng số vi phạm: ${counts.total}\n` +
+      `✅ Đã nộp phạt: ${counts.paid}\n` +
+      `❌ Chưa nộp phạt: ${counts.unpaid}\n`;
+    
+    if (retryCount !== undefined && retryCount > 0) {
+      summaryMessage += `🔄 Số lần thử lại captcha: ${retryCount}\n`;
+    }
+    
+    summaryMessage += `\n=== Chi tiết các vi phạm ===\n`;
+    
+    messages.push(summaryMessage);
 
     for (const violation of violations) {
       let message = `🚨 Lỗi vi phạm lúc ${violation.violationTime}\n\n`;
@@ -181,6 +187,7 @@ export class ViolationService {
     maxRetries: number = 5,
   ): Promise<LookupResult> {
     let lastError: Error | null = null;
+    let totalRetryCaptcha = 0;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       try {
@@ -192,6 +199,12 @@ export class ViolationService {
           options,
           forceRefreshCaptcha,
         );
+        
+        // Add captcha retry count to successful result
+        if (result.status === 'ok' && result.data) {
+          result.data.totalRetryCaptcha = totalRetryCaptcha;
+        }
+        
         return result;
       } catch (error: unknown) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -226,6 +239,7 @@ export class ViolationService {
         ) {
           // Remove any cached captcha to force fresh generation
           options.captchaText = undefined;
+          totalRetryCaptcha++;
 
           // Removed automatic fallback to alternative captcha method.
           // Just clear the captcha and retry with the same method.
@@ -234,13 +248,14 @@ export class ViolationService {
       }
     }
 
-    // If all retries failed, return error result
+    // If all retries failed, return error result with retry count
     return {
       status: 'error',
       message: lastError?.message || 'Unknown error occurred',
       data: {
         plate,
         vehicleType,
+        totalRetryCaptcha,
       },
     };
   }
