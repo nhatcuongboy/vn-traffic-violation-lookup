@@ -51,8 +51,8 @@ const config: Config = {
 
   // Debug config
   debug: {
-    saveCaptcha: true,
-    saveResultHtml: true,
+    saveCaptcha: process.env.NODE_ENV !== 'production',
+    saveResultHtml: process.env.NODE_ENV !== 'production',
   },
 };
 

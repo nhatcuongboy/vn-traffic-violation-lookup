@@ -11,9 +11,16 @@ import { Violation, ViolationCounts } from '../types';
 export const parseResultHtml = (html: string): Violation[] => {
   const $ = cheerio.load(html);
 
-  // DEBUG: Save HTML to file for inspection
+  // DEBUG: Save HTML to file for inspection (only in development)
   if (config.debug.saveResultHtml) {
-    fs.writeFileSync('result.html', html, 'utf-8');
+    try {
+      fs.writeFileSync('result.html', html, 'utf-8');
+      console.log('[DEBUG] HTML result saved to: result.html');
+    } catch (error) {
+      // If file writing fails, just log the error but don't crash the app
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn('[WARN] Failed to save HTML result for debugging:', errorMessage);
+    }
   }
 
   const violations: Violation[] = [];

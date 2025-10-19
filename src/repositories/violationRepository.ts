@@ -38,9 +38,16 @@ export class ViolationRepository {
     const buffer = Buffer.from(resp.data);
     const contentType = resp.headers['content-type'] || 'image/png';
 
-    // Save captcha for debugging
+    // Save captcha for debugging (only in development)
     if (config.debug.saveCaptcha) {
-      fs.writeFileSync('captcha.png', buffer);
+      try {
+        fs.writeFileSync('captcha.png', buffer);
+        console.log('[DEBUG] Captcha saved to: captcha.png');
+      } catch (error) {
+        // If file writing fails, just log the error but don't crash the app
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn('[WARN] Failed to save captcha for debugging:', errorMessage);
+      }
     }
 
     return { buffer, contentType };
