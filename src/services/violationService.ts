@@ -232,6 +232,7 @@ export class ViolationService {
         const errorMsg = error instanceof Error ? error.message : String(error);
         if (
           errorMsg.includes('Captcha validation failed') ||
+          errorMsg.includes('Website endpoint may have changed or session expired') ||
           errorMsg.includes('404') ||
           errorMsg.includes('403') ||
           errorMsg.includes('Timeout') ||
@@ -273,6 +274,7 @@ export class ViolationService {
     // Retryable errors
     if (
       message.includes('Captcha validation failed') ||
+      message.includes('Website endpoint may have changed or session expired') ||
       message.includes('404') ||
       message.includes('403') ||
       message.includes('500') ||
