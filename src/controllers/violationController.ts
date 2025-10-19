@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ViolationService } from '../services/violationService';
+import { BulkLookupRequest } from '../types';
 
 export class ViolationController {
   private violationService: ViolationService;
@@ -208,6 +209,42 @@ export class ViolationController {
       console.error('[ERROR] Controller:', error);
       const errorMessage = error instanceof Error ? error.message : 'Internal server error';
       res.status(500).send(`<p>Error: ${errorMessage}</p>`);
+    }
+  }
+
+  /**
+   * POST /api/violations/bulk - Bulk traffic violation lookup for multiple vehicles
+   */
+  async lookupMultipleViolations(req: Request, res: Response): Promise<void> {
+    try {
+      const request: BulkLookupRequest = req.body;
+
+      // Validate request body
+      if (!request || !request.vehicles) {
+        res.status(400).json({
+          status: 'error',
+          message: 'Request body must contain vehicles array',
+        });
+        return;
+      }
+
+      // Call service
+      const result = await this.violationService.lookupMultiplePlates(request);
+
+      // Return result
+      if (result.status === 'error') {
+        res.status(400).json(result);
+        return;
+      }
+
+      res.json(result);
+    } catch (error: unknown) {
+      console.error('[ERROR] Controller:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+      res.status(500).json({
+        status: 'error',
+        message: errorMessage,
+      });
     }
   }
 }

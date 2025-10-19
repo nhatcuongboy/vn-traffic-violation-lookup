@@ -1,5 +1,5 @@
 import { ViolationRepository } from '../repositories/violationRepository';
-import { LookupOptions, LookupResult, Violation } from '../types';
+import { LookupOptions, LookupResult, Violation, BulkLookupRequest, BulkLookupResult, BulkVehicleResult } from '../types';
 
 export class ViolationService {
   private violationRepository: ViolationRepository;
@@ -291,5 +291,151 @@ export class ViolationService {
     }
 
     return false;
+  }
+
+  /**
+   * Look up traffic violations for multiple license plates
+   * @param request - Bulk lookup request containing vehicles array
+   * @returns {Promise<BulkLookupResult>} Bulk lookup results
+   */
+  async lookupMultiplePlates(request: BulkLookupRequest): Promise<BulkLookupResult> {
+    try {
+      // Validate input
+      if (!request.vehicles || !Array.isArray(request.vehicles) || request.vehicles.length === 0) {
+        throw new Error('vehicles array is required and must not be empty');
+      }
+
+      // Limit the number of vehicles to prevent abuse
+      const maxVehicles = 10;
+      if (request.vehicles.length > maxVehicles) {
+        throw new Error(`Maximum ${maxVehicles} vehicles allowed per request`);
+      }
+
+      // Validate each vehicle
+      for (const vehicle of request.vehicles) {
+        if (!vehicle.plate || !vehicle.vehicleType) {
+          throw new Error('Each vehicle must have plate and vehicleType');
+        }
+
+        const validVehicleTypes = ['1', '2', '3'];
+        if (!validVehicleTypes.includes(vehicle.vehicleType)) {
+          throw new Error(
+            `Invalid vehicle type for plate ${vehicle.plate}. Must be 1 (Car), 2 (Motorcycle), or 3 (Electric bicycle)`,
+          );
+        }
+      }
+
+      // Prepare options
+      const options: LookupOptions = {};
+      if (request.captcha) {
+        options.captchaText = request.captcha;
+      }
+
+      // Process each vehicle lookup
+      const results: BulkVehicleResult[] = [];
+      let totalViolations = 0;
+      let totalPaidViolations = 0;
+      let totalUnpaidViolations = 0;
+
+      for (const vehicle of request.vehicles) {
+        try {
+          // Clean plate number
+          const cleanPlate = vehicle.plate.replace(/[\s-]/g, '').toUpperCase();
+          
+          // Lookup violations for this vehicle
+          const result = await this.lookupByPlate(cleanPlate, vehicle.vehicleType, options);
+
+          if (result.status === 'ok' && result.data) {
+            // Calculate counts for this vehicle
+            const vehicleCounts = this.calculateViolationCounts(result.data.violations || []);
+            totalViolations += vehicleCounts.total;
+            totalPaidViolations += vehicleCounts.paid;
+            totalUnpaidViolations += vehicleCounts.unpaid;
+
+            results.push({
+              plate: cleanPlate,
+              vehicleType: vehicle.vehicleType,
+              status: 'ok',
+              data: result.data,
+            });
+          } else {
+            results.push({
+              plate: cleanPlate,
+              vehicleType: vehicle.vehicleType,
+              status: 'error',
+              message: result.message || 'Lookup failed',
+            });
+          }
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          results.push({
+            plate: vehicle.plate,
+            vehicleType: vehicle.vehicleType,
+            status: 'error',
+            message: errorMessage,
+          });
+        }
+      }
+
+      // Calculate summary
+      const successfulLookups = results.filter(r => r.status === 'ok').length;
+      const failedLookups = results.filter(r => r.status === 'error').length;
+
+      return {
+        status: 'ok',
+        data: {
+          results,
+          summary: {
+            totalVehicles: request.vehicles.length,
+            successfulLookups,
+            failedLookups,
+            totalViolations,
+            totalPaidViolations,
+            totalUnpaidViolations,
+          },
+          lookupTime: new Date().toISOString(),
+          source: 'csgt.vn',
+        },
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        status: 'error',
+        message: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Calculate violation counts for a set of violations
+   * @param violations - Array of violations
+   * @returns Object with total, paid, and unpaid counts
+   */
+  private calculateViolationCounts(violations: Violation[]): {
+    total: number;
+    paid: number;
+    unpaid: number;
+  } {
+    const isPaid = (status: string = ''): boolean => {
+      const s = status.toLowerCase();
+      return s.includes('đã nộp') || s.includes('paid');
+    };
+
+    const isUnpaid = (status: string = ''): boolean => {
+      const s = status.toLowerCase();
+      return (
+        s.includes('chưa xử phạt') ||
+        s.includes('chưa nộp') ||
+        s.includes('not') ||
+        s.includes('unpaid') ||
+        s.includes('not yet')
+      );
+    };
+
+    return {
+      total: violations.length,
+      paid: violations.reduce((acc, v) => acc + (isPaid(v.status) ? 1 : 0), 0),
+      unpaid: violations.reduce((acc, v) => acc + (isUnpaid(v.status) ? 1 : 0), 0),
+    };
   }
 }

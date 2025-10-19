@@ -31,4 +31,19 @@ router.get('/violations/html', (req, res) => {
   violationController.lookupViolationsHtml(req, res);
 });
 
+/**
+ * POST /api/violations/bulk
+ * Request body:
+ * {
+ *   "vehicles": [
+ *     { "plate": "51K67179", "vehicleType": "1" },
+ *     { "plate": "30A12345", "vehicleType": "2" }
+ *   ],
+ *   "captcha": "optional_captcha_text"
+ * }
+ */
+router.post('/violations/bulk', (req, res) => {
+  violationController.lookupMultipleViolations(req, res);
+});
+
 export default router;

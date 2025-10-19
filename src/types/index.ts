@@ -80,6 +80,40 @@ export interface TelegramCallbackData {
 
 // Remove Express interfaces as they conflict with Express types
 
+export interface BulkLookupRequest {
+  vehicles: {
+    plate: string;
+    vehicleType: string;
+  }[];
+  captcha?: string;
+}
+
+export interface BulkLookupResult {
+  status: 'ok' | 'error';
+  message?: string;
+  data?: {
+    results: BulkVehicleResult[];
+    summary: {
+      totalVehicles: number;
+      successfulLookups: number;
+      failedLookups: number;
+      totalViolations: number;
+      totalPaidViolations: number;
+      totalUnpaidViolations: number;
+    };
+    lookupTime?: string;
+    source?: string;
+  };
+}
+
+export interface BulkVehicleResult {
+  plate: string;
+  vehicleType: string;
+  status: 'ok' | 'error';
+  message?: string;
+  data?: LookupData;
+}
+
 export interface Config {
   port: number;
   csgt: {
