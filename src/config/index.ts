@@ -22,9 +22,14 @@ const config: Config = {
     tesseract: {
       language: 'eng',
       options: {
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+        tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyz',
         tessedit_pageseg_mode: '8', // Single word
-        tessedit_ocr_engine_mode: '3', // Default, based on what is available
+        tessedit_ocr_engine_mode: '1', // LSTM only
+      },
+      // Worker pool config
+      workerPool: {
+        maxWorkers: parseInt(process.env.TESSERACT_MAX_WORKERS || '3', 10),
+        enableWorkerPool: process.env.TESSERACT_ENABLE_WORKER_POOL !== 'false',
       },
     },
 

@@ -131,6 +131,10 @@ export interface Config {
         tessedit_pageseg_mode: string;
         tessedit_ocr_engine_mode: string;
       };
+      workerPool: {
+        maxWorkers: number;
+        enableWorkerPool: boolean;
+      };
     };
     autocaptcha: {
       url: string;

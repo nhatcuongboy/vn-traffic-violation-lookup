@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ViolationController } from '../controllers/violationController';
+import { WorkerPoolManager } from '../utils/workerPoolManager';
 
 const router = Router();
 const violationController = new ViolationController();
@@ -44,6 +45,78 @@ router.get('/violations/html', (req, res) => {
  */
 router.post('/violations/bulk', (req, res) => {
   violationController.lookupMultipleViolations(req, res);
+});
+
+/**
+ * GET /api/worker-pool/status
+ * Returns worker pool status
+ */
+router.get('/worker-pool/status', (req, res) => {
+  try {
+    const status = WorkerPoolManager.getStatus();
+    const performance = WorkerPoolManager.getPerformanceInfo();
+
+    res.json({
+      success: true,
+      data: {
+        status,
+        performance,
+        isReady: WorkerPoolManager.isReady(),
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get worker pool status',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/worker-pool/cleanup
+ * Clean up worker pool
+ */
+router.post('/worker-pool/cleanup', async (req, res) => {
+  try {
+    await WorkerPoolManager.cleanup();
+    res.json({
+      success: true,
+      message: 'Worker pool cleaned up successfully',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cleanup worker pool',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/worker-pool/initialize
+ * Reinitialize worker pool
+ */
+router.post('/worker-pool/initialize', async (req, res) => {
+  try {
+    await WorkerPoolManager.initialize();
+    const status = WorkerPoolManager.getStatus();
+
+    res.json({
+      success: true,
+      message: 'Worker pool initialized successfully',
+      data: status,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initialize worker pool',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 });
 
 export default router;

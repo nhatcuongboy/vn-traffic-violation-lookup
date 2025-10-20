@@ -1,27 +1,46 @@
 import axios from 'axios';
-import Tesseract from 'tesseract.js';
+import { createWorker, Worker, PSM } from 'tesseract.js';
 import config from '../config';
 import { AutocaptchaResponse } from '../types';
+// import { preprocessCaptchaImage } from './imagePreprocessor';
+
+// Global worker instance for reuse
+let worker: Worker | null = null;
 
 export type CaptchaMethod = 'tesseract' | 'autocaptcha';
 
 /**
  * Solve captcha using Tesseract OCR
  * @param imageBuffer - Buffer containing the captcha image
- * @param contentType - MIME type of the image
+ * @param _contentType - MIME type of the image
  * @returns {Promise<string>} Solved captcha text
  */
-const solveWithTesseract = async (imageBuffer: Buffer, contentType: string): Promise<string> => {
-  console.log(contentType);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const solveWithTesseract = async (imageBuffer: Buffer, _contentType: string): Promise<string> => {
   try {
+    // Initialize worker if not exists
+    if (!worker) {
+      worker = await createWorker(config.captcha.tesseract.language, undefined, {
+        logger: (): void => {}, // disable progress logging
+      });
+      await worker.setParameters({
+        ...config.captcha.tesseract.options,
+        tessedit_pageseg_mode: parseInt(
+          config.captcha.tesseract.options.tessedit_pageseg_mode,
+        ) as unknown as PSM,
+        tessedit_ocr_engine_mode: parseInt(
+          config.captcha.tesseract.options.tessedit_ocr_engine_mode,
+        ),
+      });
+    }
+
+    // Preprocess image before OCR
+    // const preprocessedImage = await preprocessCaptchaImage(imageBuffer);
+
+    // Reuse existing worker
     const {
       data: { text, confidence },
-    } = await Tesseract.recognize(imageBuffer, config.captcha.tesseract.language, {
-      logger: (): void => {
-        // Progress logging removed
-      },
-      ...config.captcha.tesseract.options,
-    });
+    } = await worker.recognize(imageBuffer);
 
     const cleanedText = text.trim().replace(/\s+/g, '');
 
@@ -133,6 +152,14 @@ const solveWithAutocaptcha = async (imageBuffer: Buffer, contentType: string): P
  * @param method - Method to use ('tesseract' or 'autocaptcha'). If not specified, uses default from config
  * @returns {Promise<string>} Solved captcha text
  */
+// Cleanup function to terminate worker
+export const cleanupTesseract = async (): Promise<void> => {
+  if (worker) {
+    await worker.terminate();
+    worker = null;
+  }
+};
+
 export const solveCaptcha = async (
   imageBuffer: Buffer,
   contentType: string,
@@ -155,27 +182,7 @@ export const solveCaptcha = async (
       error instanceof Error ? error.message : 'Unknown error',
     );
 
-    // If the primary method fails and we have a fallback, try the other method
-    if (captchaMethod === 'tesseract' && config.captcha.autocaptcha.key) {
-      try {
-        return await solveWithAutocaptcha(imageBuffer, contentType);
-      } catch (fallbackError) {
-        console.error('[ERROR] Both Tesseract and Autocaptcha failed');
-        throw new Error(
-          `Captcha solving failed with both methods. Tesseract: ${error instanceof Error ? error.message : 'Unknown error'}, Autocaptcha: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`,
-        );
-      }
-    } else if (captchaMethod === 'autocaptcha') {
-      try {
-        return await solveWithTesseract(imageBuffer, contentType);
-      } catch (fallbackError) {
-        console.error('[ERROR] Both Autocaptcha and Tesseract failed');
-        throw new Error(
-          `Captcha solving failed with both methods. Autocaptcha: ${error instanceof Error ? error.message : 'Unknown error'}, Tesseract: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`,
-        );
-      }
-    }
-
+    // No fallback - throw error immediately
     throw error;
   }
 };

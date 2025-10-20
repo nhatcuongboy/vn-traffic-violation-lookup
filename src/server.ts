@@ -7,7 +7,11 @@ const server = app.listen(config.port, () => {
   console.log(
     `🔍 Captcha Method: ${config.captcha.defaultMethod} (Tesseract: ✅, Autocaptcha: ${config.captcha.autocaptcha.key ? '✅' : '❌'})`,
   );
+  console.log(
+    `🔧 Tesseract Workers: ${config.captcha.tesseract.workerPool.maxWorkers} (Pool: ${config.captcha.tesseract.workerPool.enableWorkerPool ? '✅ Enabled' : '❌ Disabled'})`,
+  );
   console.log(`🤖 Telegram Bot: ${config.telegram.token ? '✅ Configured' : '❌ Not configured'}`);
+  console.log(`📋 Bot Commands Menu: ✅ Configured`);
 });
 
 // Graceful shutdown

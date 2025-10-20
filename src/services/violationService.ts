@@ -1,5 +1,12 @@
 import { ViolationRepository } from '../repositories/violationRepository';
-import { LookupOptions, LookupResult, Violation, BulkLookupRequest, BulkLookupResult, BulkVehicleResult } from '../types';
+import {
+  LookupOptions,
+  LookupResult,
+  Violation,
+  BulkLookupRequest,
+  BulkLookupResult,
+  BulkVehicleResult,
+} from '../types';
 
 export class ViolationService {
   private violationRepository: ViolationRepository;
@@ -341,7 +348,7 @@ export class ViolationService {
         try {
           // Clean plate number
           const cleanPlate = vehicle.plate.replace(/[\s-]/g, '').toUpperCase();
-          
+
           // Lookup violations for this vehicle
           const result = await this.lookupByPlate(cleanPlate, vehicle.vehicleType, options);
 
@@ -378,8 +385,8 @@ export class ViolationService {
       }
 
       // Calculate summary
-      const successfulLookups = results.filter(r => r.status === 'ok').length;
-      const failedLookups = results.filter(r => r.status === 'error').length;
+      const successfulLookups = results.filter((r) => r.status === 'ok').length;
+      const failedLookups = results.filter((r) => r.status === 'error').length;
 
       return {
         status: 'ok',
