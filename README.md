@@ -104,7 +104,7 @@ npm run test:worker-pool       # Test Tesseract worker pool
 - [User Management](docs/user-management-system.md) - User and cron job management
 - [Cron Service](docs/cron-service.md) - Scheduled execution details
 - [Telegram Commands](docs/telegram-commands.md) - Command reference
-- [Final Summary](docs/FINAL-SUMMARY.md) - Complete implementation overview
+- [Final Summary](docs/final-summary.md) - Complete implementation overview
 
 ## 🏗️ Architecture
 

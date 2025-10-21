@@ -25,8 +25,6 @@ All features of the automated traffic violation lookup cron job have been succes
 - ✅ Comprehensive CRUD operations
 - ✅ Statistics and health check
 
-**Test Results:** ✅ Tất cả 9 tests passed
-
 ---
 
 ### ✅ Step 2: User Management System
@@ -47,7 +45,7 @@ All features of the automated traffic violation lookup cron job have been succes
 - ✅ Notification system
 - ✅ Statistics tracking
 
-**Test Results:** ✅ Tất cả 10 tests passed
+**Test Results:** ✅ All 10 tests passed
 
 ---
 
@@ -77,7 +75,7 @@ All features of the automated traffic violation lookup cron job have been succes
 
 ---
 
-### ✅ Bước 4: Telegram Commands Implementation
+### ✅ Step 4: Telegram Commands Implementation
 
 **Files Modified:**
 
@@ -87,15 +85,15 @@ All features of the automated traffic violation lookup cron job have been succes
 
 **Commands Implemented:**
 
-1. ✅ `/cron_setup` - Thiết lập tra cứu tự động
-2. ✅ `/cron_status` - Xem trạng thái cron job
-3. ✅ `/cron_update` - Cập nhật phương tiện
-4. ✅ `/cron_disable` - Tắt cron job
+1. ✅ `/cron_setup` - Set up automatic lookup
+2. ✅ `/cron_status` - View cron job status
+3. ✅ `/cron_update` - Update vehicle
+4. ✅ `/cron_disable` - Disable cron job
 
 **Features:**
 
-- ✅ Interactive setup flow với inline keyboards
-- ✅ Validation biển số xe
+- ✅ Interactive setup flow with inline keyboards
+- ✅ License plate validation
 - ✅ User-friendly messages
 - ✅ Error handling
 - ✅ Callback query handlers
@@ -276,17 +274,17 @@ npm start
 ### 2. User Commands
 
 ```
-/cron_setup   - Thiết lập tra cứu tự động
-/cron_status  - Xem trạng thái
-/cron_update  - Cập nhật phương tiện
-/cron_disable - Tắt tra cứu tự động
+/cron_setup   - Set up automatic lookup
+/cron_status  - View status
+/cron_update  - Update vehicle
+/cron_disable - Disable automatic lookup
 ```
 
 ### 3. Automatic Execution
 
-- Bot tự động tra cứu lúc 9:00 AM mỗi ngày
-- Gửi thông báo nếu có thay đổi
-- Lưu lịch sử tra cứu
+- Bot automatically looks up at 9:00 AM daily
+- Send notification if changes detected
+- Save lookup history
 
 ## 📊 Statistics & Monitoring
 
@@ -326,8 +324,8 @@ const stats = cronService.getStats();
 
 ## 🎯 Performance
 
-- **Database**: SQLite với WAL mode cho better concurrency
-- **Execution**: Sequential với delays để avoid overwhelming
+- **Database**: SQLite with WAL mode for better concurrency
+- **Execution**: Sequential with delays to avoid overwhelming
 - **Memory**: Efficient data structures
 - **Scalability**: Ready for horizontal scaling
 
@@ -359,12 +357,12 @@ const stats = cronService.getStats();
 
 ## ✨ Key Achievements
 
-1. ✅ **Complete Implementation**: Tất cả 4 bước đã hoàn thành
-2. ✅ **Comprehensive Testing**: Tests cho tất cả components
-3. ✅ **Documentation**: Chi tiết cho mọi phần của hệ thống
+1. ✅ **Complete Implementation**: All 4 steps completed
+2. ✅ **Comprehensive Testing**: Tests for all components
+3. ✅ **Documentation**: Detailed for all parts of the system
 4. ✅ **Production Ready**: Error handling, logging, monitoring
 5. ✅ **User Friendly**: Intuitive commands & clear messages
-6. ✅ **Scalable**: Architecture sẵn sàng cho scaling
+6. ✅ **Scalable**: Architecture ready for scaling
 
 ## 📞 Support & Maintenance
 
@@ -396,24 +394,24 @@ await db.cleanupOldLookupHistory(30); // Keep 30 days
 
 ## 🎊 Conclusion
 
-**Hệ thống cron job tra cứu vi phạm tự động đã hoàn thành 100%!**
+**Automated traffic violation lookup cron job system is 100% complete!**
 
 ✅ **All Features Implemented**
 ✅ **All Tests Passing**
 ✅ **Full Documentation**
 ✅ **Production Ready**
 
-**Bạn có thể bắt đầu sử dụng ngay bây giờ với:**
+**You can start using it now with:**
 
 ```bash
 npm start
 ```
 
-**Telegram Bot sẽ:**
+**Telegram Bot will:**
 
-- Lắng nghe các lệnh từ users
-- Tự động tra cứu vi phạm mỗi ngày lúc 9h sáng
-- Gửi thông báo khi có thay đổi
-- Lưu lịch sử tra cứu
+- Listen to commands from users
+- Automatically lookup violations daily at 9 AM
+- Send notifications when changes detected
+- Save lookup history
 
-**Chúc bạn thành công!** 🚀
+**Good luck!** 🚀

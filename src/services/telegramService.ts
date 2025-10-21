@@ -169,10 +169,9 @@ Chọn một tùy chọn bên dưới:`;
             { text: '🔍 Tra cứu vi phạm', callback_data: 'start_search' },
             { text: '❓ Hướng dẫn', callback_data: 'show_help' },
           ],
-          [
-            { text: '📋 Menu chính', callback_data: 'show_menu' },
-            { text: '🆘 Hỗ trợ', callback_data: 'show_support' },
-          ],
+          [{ text: '⏰ Thiết lập tra cứu tự động', callback_data: 'start_cron_setup' }],
+          [{ text: '📊 Xem trạng thái cron job', callback_data: 'show_cron_status' }],
+          [{ text: '🆘 Hỗ trợ', callback_data: 'show_support' }],
         ],
       },
       parse_mode: 'Markdown' as ParseMode,
@@ -209,12 +208,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
 
     const options = {
       reply_markup: {
-        inline_keyboard: [
-          [
-            { text: '🔍 Bắt đầu tra cứu', callback_data: 'start_search' },
-            { text: '📋 Menu chính', callback_data: 'show_menu' },
-          ],
-        ],
+        inline_keyboard: [[{ text: '🔍 Bắt đầu tra cứu', callback_data: 'start_search' }]],
       },
       parse_mode: 'Markdown' as ParseMode,
     };
@@ -521,6 +515,10 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
         };
         await this.startCronSetup(chatId, tempMsg);
       }
+    } else if (callbackQuery.data === 'show_cron_status') {
+      // Show cron status from callback
+      await this.bot.answerCallbackQuery(callbackQuery.id);
+      await this.showCronStatus(chatId);
     } else if (callbackQuery.data.startsWith('vehicle_type_')) {
       // Handle vehicle type selection
       const vehicleType = callbackQuery.data.split('_')[2];
@@ -649,7 +647,6 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
               },
               { text: '🔎 Tra cứu biển số khác', callback_data: 'new_search' },
             ],
-            [{ text: '📋 Menu chính', callback_data: 'show_menu' }],
           ],
         },
       };
@@ -692,7 +689,6 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
             },
             { text: '🔎 Tra cứu biển số khác', callback_data: 'new_search' },
           ],
-          [{ text: '📋 Menu chính', callback_data: 'show_menu' }],
         ],
       },
     };
@@ -779,7 +775,6 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
             },
             { text: '🔎 Tra cứu khác', callback_data: 'new_search' },
           ],
-          [{ text: '📋 Menu chính', callback_data: 'show_menu' }],
         ],
       },
       parse_mode: 'Markdown' as const,
@@ -905,7 +900,6 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
             { text: '🔄 Thử lại ngay', callback_data: retryCallbackData },
             { text: '🔎 Tra cứu khác', callback_data: 'new_search' },
           ],
-          [{ text: '📋 Menu chính', callback_data: 'show_menu' }],
         ],
       },
       parse_mode: 'Markdown' as ParseMode,
