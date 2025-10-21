@@ -54,6 +54,20 @@ const config: Config = {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
   },
 
+  // Database config
+  database: {
+    path: process.env.DATABASE_PATH || './data/cron_jobs.db',
+    enableWAL: process.env.DATABASE_WAL !== 'false',
+    enableForeignKeys: process.env.DATABASE_FOREIGN_KEYS !== 'false',
+  },
+
+  // Cron job config
+  cron: {
+    schedule: process.env.CRON_SCHEDULE || '0 9 * * *', // Default: 9 AM daily
+    timezone: process.env.CRON_TIMEZONE || 'Asia/Ho_Chi_Minh',
+    enabled: process.env.CRON_ENABLED !== 'false', // Enable by default
+  },
+
   // Debug config
   debug: {
     saveCaptcha: process.env.NODE_ENV !== 'production',

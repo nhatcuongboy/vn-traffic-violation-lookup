@@ -2,8 +2,10 @@
 .env
 .env.production
 .github/
+.cursor/
 dist/
 node_modules/
+data/
 
 # Tesseract training data
 *.traineddata

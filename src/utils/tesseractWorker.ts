@@ -18,9 +18,6 @@ class TesseractWorkerManager {
    * Initialize worker pool (simplified)
    */
   async initialize(): Promise<void> {
-    console.log(
-      `[TesseractWorker] Initializing with max ${this.pool.maxConcurrent} concurrent jobs...`,
-    );
     this.pool.isInitialized = true;
   }
 

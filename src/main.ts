@@ -1,6 +1,16 @@
 import server from './server';
 import { TelegramService } from './services/telegramService';
+import { initializeDatabase } from './database';
 import config from './config';
+
+// Initialize database
+try {
+  initializeDatabase(config.database);
+  console.log('📊 Database initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize database:', error);
+  process.exit(1);
+}
 
 // Start Telegram Bot if token is configured
 let telegramService: TelegramService | null = null;
@@ -22,6 +32,15 @@ const shutdown = (): void => {
 
   if (telegramService) {
     telegramService.stop();
+  }
+
+  // Close database connection
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { closeDatabase } = require('./database');
+    closeDatabase();
+  } catch (error) {
+    console.error('❌ Error closing database:', error);
   }
 
   server.close(() => {

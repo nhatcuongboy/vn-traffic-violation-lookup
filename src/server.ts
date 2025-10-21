@@ -11,7 +11,6 @@ const server = app.listen(config.port, () => {
     `🔧 Tesseract Workers: ${config.captcha.tesseract.workerPool.maxWorkers} (Pool: ${config.captcha.tesseract.workerPool.enableWorkerPool ? '✅ Enabled' : '❌ Disabled'})`,
   );
   console.log(`🤖 Telegram Bot: ${config.telegram.token ? '✅ Configured' : '❌ Not configured'}`);
-  console.log(`📋 Bot Commands Menu: ✅ Configured`);
 });
 
 // Graceful shutdown

@@ -1,5 +1,5 @@
-import { tesseractWorkerManager } from './utils/tesseractWorker';
-import { WorkerPoolManager } from './utils/workerPoolManager';
+import { tesseractWorkerManager } from '@/utils/tesseractWorker';
+import { WorkerPoolManager } from '@/utils/workerPoolManager';
 import fs from 'fs';
 import path from 'path';
 

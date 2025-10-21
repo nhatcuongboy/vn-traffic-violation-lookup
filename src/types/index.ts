@@ -40,10 +40,26 @@ export interface LookupOptions {
   saveCaptcha?: boolean;
 }
 
+export enum UserStep {
+  ASK_VEHICLE_TYPE = 'ASK_VEHICLE_TYPE',
+  ASK_PLATE = 'ASK_PLATE',
+  FETCHING = 'FETCHING',
+  CRON_ASK_VEHICLE_TYPE = 'CRON_ASK_VEHICLE_TYPE',
+  CRON_ASK_PLATE = 'CRON_ASK_PLATE',
+  CRON_SETUP = 'CRON_SETUP',
+}
+
+export enum UserAction {
+  LOOKUP = 'lookup',
+  CRON_SETUP = 'cron_setup',
+  CRON_UPDATE = 'cron_update',
+}
+
 export interface UserState {
-  step: 'ASK_VEHICLE_TYPE' | 'ASK_PLATE' | 'FETCHING';
+  step: UserStep;
   vehicleType?: string;
   plate?: string;
+  action?: UserAction;
 }
 
 export interface CaptchaResponse {
@@ -149,6 +165,16 @@ export interface Config {
   http: {
     timeout: number;
     userAgent: string;
+  };
+  database: {
+    path: string;
+    enableWAL: boolean;
+    enableForeignKeys: boolean;
+  };
+  cron: {
+    schedule: string;
+    timezone: string;
+    enabled: boolean;
   };
   debug: {
     saveCaptcha: boolean;

@@ -1,11 +1,18 @@
 import TelegramBot, { CallbackQuery, Message, ParseMode } from 'node-telegram-bot-api';
 import config from '../config';
-import { LookupResult, UserState } from '../types';
+import { LookupResult, UserState, UserStep, UserAction } from '../types';
 import { ViolationService } from './violationService';
+import { CronService } from './cronService';
+import { UserService, CronJobService } from './userService';
+import { NotificationService } from './notificationService';
 
 export class TelegramService {
   private bot: TelegramBot;
   private violationService: ViolationService;
+  private cronService: CronService;
+  private userService: UserService;
+  private cronJobService: CronJobService;
+  private notificationService: NotificationService;
   private userStates: Record<number, UserState>;
 
   constructor() {
@@ -15,7 +22,13 @@ export class TelegramService {
 
     this.bot = new TelegramBot(config.telegram.token, { polling: config.telegram.polling });
     this.violationService = new ViolationService();
+    this.userService = new UserService();
+    this.cronJobService = new CronJobService();
+    this.notificationService = new NotificationService(this.bot);
     this.userStates = {};
+
+    // Initialize CronService (will use config from src/config/index.ts)
+    this.cronService = new CronService(this.bot);
 
     this.setupBotCommands();
     this.setupHandlers();
@@ -30,6 +43,8 @@ export class TelegramService {
       await this.bot.setMyCommands([
         { command: 'start', description: '🚀 Bắt đầu sử dụng bot' },
         { command: 'lookup', description: '🔍 Tra cứu vi phạm giao thông' },
+        { command: 'cron_setup', description: '⏰ Thiết lập tra cứu tự động' },
+        { command: 'cron_status', description: '📊 Xem trạng thái cron job' },
         { command: 'menu', description: '📋 Hiển thị menu chính' },
         { command: 'help', description: '❓ Hướng dẫn sử dụng' },
       ]);
@@ -65,6 +80,30 @@ export class TelegramService {
     this.bot.onText(/\/lookup/, (msg: Message) => {
       const chatId = msg.chat.id;
       this.startSearch(chatId);
+    });
+
+    // Cron setup command
+    this.bot.onText(/\/cron_setup/, async (msg: Message) => {
+      const chatId = msg.chat.id;
+      await this.startCronSetup(chatId, msg);
+    });
+
+    // Cron status command
+    this.bot.onText(/\/cron_status/, async (msg: Message) => {
+      const chatId = msg.chat.id;
+      await this.showCronStatus(chatId);
+    });
+
+    // Cron update command
+    this.bot.onText(/\/cron_update/, async (msg: Message) => {
+      const chatId = msg.chat.id;
+      await this.startCronUpdate(chatId);
+    });
+
+    // Cron disable command
+    this.bot.onText(/\/cron_disable/, async (msg: Message) => {
+      const chatId = msg.chat.id;
+      await this.disableCronJob(chatId);
     });
 
     // Handle all messages
@@ -187,7 +226,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
    * Start lookup process
    */
   private startSearch(chatId: number): void {
-    this.userStates[chatId] = { step: 'ASK_VEHICLE_TYPE' };
+    this.userStates[chatId] = { step: UserStep.ASK_VEHICLE_TYPE };
 
     const options = {
       reply_markup: {
@@ -226,10 +265,14 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
     userState: UserState,
   ): Promise<void> {
     try {
-      // Only handle plate number input (vehicle type is selected via buttons)
-      if (userState.step === 'ASK_PLATE') {
+      // Handle regular violation lookup
+      if (
+        userState.step === UserStep.ASK_PLATE &&
+        userState.action !== UserAction.CRON_SETUP &&
+        userState.action !== UserAction.CRON_UPDATE
+      ) {
         userState.plate = text;
-        userState.step = 'FETCHING';
+        userState.step = UserStep.FETCHING;
 
         this.bot.sendMessage(chatId, '⏳ Đang tra cứu vi phạm, vui lòng chờ...');
 
@@ -241,12 +284,79 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
 
         await this.sendViolationResults(chatId, result, userState);
       }
+
+      // Handle cron job setup plate input
+      if (
+        userState.step === UserStep.CRON_ASK_PLATE &&
+        (userState.action === UserAction.CRON_SETUP || userState.action === UserAction.CRON_UPDATE)
+      ) {
+        userState.plate = text;
+
+        // Validate plate
+        const validation = this.cronJobService.validateCronJobData({
+          userId: 0, // Will be set later
+          plate: text!,
+          vehicleType: userState.vehicleType!,
+        });
+
+        if (!validation.valid) {
+          await this.bot.sendMessage(
+            chatId,
+            `❌ ${validation.error}\n\n📝 Vui lòng nhập lại biển số xe:`,
+          );
+          return;
+        }
+
+        // Get user
+        const userResult = await this.userService.getUserByChatId(chatId);
+        if (!userResult.success) {
+          await this.bot.sendMessage(chatId, '❌ Lỗi: Không tìm thấy thông tin user.');
+          delete this.userStates[chatId];
+          return;
+        }
+
+        const userId = userResult.data!.id;
+
+        // Setup or update cron job
+        this.bot.sendMessage(chatId, '⏳ Đang thiết lập tra cứu tự động...');
+
+        const result = await this.cronJobService.setupCronJob({
+          userId,
+          plate: text!,
+          vehicleType: userState.vehicleType!,
+        });
+
+        if (result.success) {
+          await this.notificationService.sendCronJobSetupConfirmation(
+            chatId,
+            text!,
+            userState.vehicleType!,
+          );
+        } else {
+          await this.bot.sendMessage(
+            chatId,
+            `❌ Có lỗi xảy ra khi thiết lập tra cứu tự động: ${result.error}`,
+          );
+        }
+
+        // Clear user state
+        delete this.userStates[chatId];
+      }
     } catch (error) {
       console.error('[ERROR] Telegram Service:', error);
 
       // Handle unexpected errors (not from service result)
       const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.handleLookupError(chatId, errorMessage, userState);
+
+      if (
+        userState.action === UserAction.CRON_SETUP ||
+        userState.action === UserAction.CRON_UPDATE
+      ) {
+        await this.bot.sendMessage(chatId, `❌ Có lỗi xảy ra: ${errorMessage}`);
+        delete this.userStates[chatId];
+      } else {
+        await this.handleLookupError(chatId, errorMessage, userState);
+      }
     }
   }
 
@@ -271,7 +381,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
 
     if (callbackQuery.data === 'new_search' || callbackQuery.data === 'start_search') {
       // Start new lookup
-      this.userStates[chatId] = { step: 'ASK_VEHICLE_TYPE' };
+      this.userStates[chatId] = { step: UserStep.ASK_VEHICLE_TYPE };
 
       // Answer the callback query
       await this.bot.answerCallbackQuery(callbackQuery.id);
@@ -330,7 +440,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
       // Reset to vehicle type selection step but keep any existing plate number
       const userState = this.userStates[chatId];
       if (userState) {
-        userState.step = 'ASK_VEHICLE_TYPE';
+        userState.step = UserStep.ASK_VEHICLE_TYPE;
         // Keep the plate number if user has already entered it
         const existingPlate = userState.plate;
 
@@ -366,6 +476,51 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
 
         await this.bot.sendMessage(chatId, message, options);
       }
+    } else if (callbackQuery.data.startsWith('cron_vehicle_type_')) {
+      // Handle cron vehicle type selection
+      const vehicleType = callbackQuery.data.split('_')[3];
+      const userState = this.userStates[chatId];
+
+      if (userState) {
+        userState.vehicleType = vehicleType;
+        userState.step = UserStep.CRON_ASK_PLATE;
+
+        // Answer the callback query
+        await this.bot.answerCallbackQuery(callbackQuery.id);
+
+        // Get vehicle type display name
+        const vehicleTypeNames = {
+          '1': '🚗 Xe ô tô',
+          '2': '🏍️ Xe máy',
+          '3': '🚴‍♀️ Xe đạp điện',
+        };
+        const selectedVehicleType =
+          vehicleTypeNames[vehicleType as keyof typeof vehicleTypeNames] || 'Phương tiện';
+
+        await this.bot.sendMessage(
+          chatId,
+          `📋 Loại xe đã chọn: ${selectedVehicleType}\n\n` +
+            `🔢 Nhập biển số xe của bạn (ví dụ: 51K01234):`,
+        );
+      }
+    } else if (callbackQuery.data === 'cancel_cron_setup') {
+      // Cancel cron setup
+      await this.bot.answerCallbackQuery(callbackQuery.id);
+      delete this.userStates[chatId];
+      await this.bot.sendMessage(chatId, '❌ Đã hủy thiết lập tra cứu tự động.');
+    } else if (callbackQuery.data === 'start_cron_setup') {
+      // Start cron setup from callback
+      await this.bot.answerCallbackQuery(callbackQuery.id);
+
+      if (callbackQuery.message?.from) {
+        const tempMsg: Message = {
+          message_id: callbackQuery.message.message_id,
+          date: callbackQuery.message.date,
+          chat: callbackQuery.message.chat,
+          from: callbackQuery.message.from,
+        };
+        await this.startCronSetup(chatId, tempMsg);
+      }
     } else if (callbackQuery.data.startsWith('vehicle_type_')) {
       // Handle vehicle type selection
       const vehicleType = callbackQuery.data.split('_')[2];
@@ -373,7 +528,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
 
       if (userState) {
         userState.vehicleType = vehicleType;
-        userState.step = 'ASK_PLATE';
+        userState.step = UserStep.ASK_PLATE;
 
         // Answer the callback query
         await this.bot.answerCallbackQuery(callbackQuery.id);
@@ -418,14 +573,18 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
 
       try {
         const result = await this.violationService.lookupByPlate(plate, vehicleType);
-        await this.sendViolationResults(chatId, result, { step: 'FETCHING', vehicleType, plate });
+        await this.sendViolationResults(chatId, result, {
+          step: UserStep.FETCHING,
+          vehicleType,
+          plate,
+        });
       } catch (error) {
         console.error('[ERROR] Telegram Service:', error);
 
         // Handle unexpected errors (not from service result)
         const errorMessage = error instanceof Error ? error.message : String(error);
         await this.handleLookupError(chatId, errorMessage, {
-          step: 'FETCHING',
+          step: UserStep.FETCHING,
           vehicleType,
           plate,
         });
@@ -438,7 +597,7 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
       const userState = this.userStates[chatId];
       if (userState && userState.plate && userState.vehicleType) {
         // Retry with same parameters
-        userState.step = 'FETCHING';
+        userState.step = UserStep.FETCHING;
 
         await this.bot.sendMessage(chatId, '⏳ Đang thử lại tra cứu, vui lòng chờ...');
 
@@ -756,11 +915,211 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
   }
 
   /**
+   * Start cron job setup
+   */
+  private async startCronSetup(chatId: number, msg: Message): Promise<void> {
+    try {
+      // Register or get user
+      const userResult = await this.userService.registerOrGetUser({
+        chatId,
+        username: msg.from?.username,
+        firstName: msg.from?.first_name,
+        lastName: msg.from?.last_name,
+      });
+
+      if (!userResult.success) {
+        await this.bot.sendMessage(chatId, '❌ Lỗi: Không thể đăng ký user. Vui lòng thử lại.');
+        return;
+      }
+
+      // Initialize user state for cron setup
+      this.userStates[chatId] = {
+        step: UserStep.CRON_ASK_VEHICLE_TYPE,
+        action: UserAction.CRON_SETUP,
+      };
+
+      const options = {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🚗 Xe ô tô', callback_data: 'cron_vehicle_type_1' }],
+            [{ text: '🏍️ Xe máy', callback_data: 'cron_vehicle_type_2' }],
+            [{ text: '🚴‍♀️ Xe đạp điện', callback_data: 'cron_vehicle_type_3' }],
+            [{ text: '❌ Hủy', callback_data: 'cancel_cron_setup' }],
+          ],
+        },
+      };
+
+      // Format cron schedule to Vietnamese description
+      const formatCronSchedule = (cronExpression: string): string => {
+        const parts = cronExpression.split(' ');
+        if (parts.length !== 5) return cronExpression;
+
+        const [minute, hour, day, month, weekday] = parts;
+
+        // Handle interval patterns
+        if (minute.includes('*/')) {
+          const interval = minute.split('/')[1];
+          return `mỗi ${interval} phút`;
+        }
+
+        if (hour.includes('*/')) {
+          const interval = hour.split('/')[1];
+          const minuteNum = minute === '*' ? '00' : minute.padStart(2, '0');
+          return `mỗi ${interval} giờ (phút thứ ${minuteNum})`;
+        }
+
+        const hourNum = hour === '*' ? '00' : hour.padStart(2, '0');
+        const minuteNum = minute === '*' ? '00' : minute.padStart(2, '0');
+        const time = `${hourNum}:${minuteNum}`;
+
+        if (day === '*' && month === '*' && weekday === '*') {
+          return `mỗi ngày lúc ${time}`;
+        }
+
+        return `lúc ${time}`;
+      };
+
+      const scheduleDescription = formatCronSchedule(config.cron.schedule);
+
+      await this.bot.sendMessage(
+        chatId,
+        '⏰ *THIẾT LẬP TRA CỨU TỰ ĐỘNG*\n\n' +
+          `Bot sẽ tự động tra cứu vi phạm cho phương tiện của bạn ${scheduleDescription}.\n\n` +
+          '🔻 Chọn loại xe của bạn:',
+        { ...options, parse_mode: 'Markdown' },
+      );
+    } catch (error) {
+      console.error('[ERROR] Start cron setup:', error);
+      await this.bot.sendMessage(chatId, '❌ Có lỗi xảy ra. Vui lòng thử lại sau.');
+    }
+  }
+
+  /**
+   * Show cron job status
+   */
+  private async showCronStatus(chatId: number): Promise<void> {
+    try {
+      const status = await this.cronJobService.getCronJobStatus(chatId);
+
+      if (!status.hasCronJob) {
+        const message =
+          '📋 *TRẠNG THÁI TRA CỨU TỰ ĐỘNG*\n\n' +
+          '❌ Bạn chưa thiết lập tra cứu tự động.\n\n' +
+          '💡 *Để thiết lập:*\n' +
+          '• Gõ /cron_setup để bắt đầu';
+
+        const options = {
+          reply_markup: {
+            inline_keyboard: [[{ text: '⏰ Thiết lập ngay', callback_data: 'start_cron_setup' }]],
+          },
+          parse_mode: 'Markdown' as ParseMode,
+        };
+
+        await this.bot.sendMessage(chatId, message, options);
+        return;
+      }
+
+      await this.notificationService.sendCronJobStatus(
+        chatId,
+        status.hasCronJob,
+        status.cronJob
+          ? {
+              plate: status.cronJob.plate,
+              vehicleType: status.cronJob.vehicleType,
+              lastRun: status.cronJob.lastRun?.toISOString(),
+              nextRun: status.cronJob.nextRun?.toISOString(),
+            }
+          : undefined,
+        status.isActive,
+      );
+    } catch (error) {
+      console.error('[ERROR] Show cron status:', error);
+      await this.bot.sendMessage(chatId, '❌ Có lỗi xảy ra. Vui lòng thử lại sau.');
+    }
+  }
+
+  /**
+   * Start cron job update
+   */
+  private async startCronUpdate(chatId: number): Promise<void> {
+    try {
+      // Check if user has cron job
+      const status = await this.cronJobService.getCronJobStatus(chatId);
+
+      if (!status.hasCronJob) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Bạn chưa có tra cứu tự động nào.\n\n💡 Sử dụng /cron_setup để thiết lập.',
+        );
+        return;
+      }
+
+      // Initialize user state for cron update
+      this.userStates[chatId] = {
+        step: UserStep.CRON_ASK_VEHICLE_TYPE,
+        action: UserAction.CRON_UPDATE,
+      };
+
+      const options = {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🚗 Xe ô tô', callback_data: 'cron_vehicle_type_1' }],
+            [{ text: '🏍️ Xe máy', callback_data: 'cron_vehicle_type_2' }],
+            [{ text: '🚴‍♀️ Xe đạp điện', callback_data: 'cron_vehicle_type_3' }],
+            [{ text: '❌ Hủy', callback_data: 'cancel_cron_setup' }],
+          ],
+        },
+      };
+
+      await this.bot.sendMessage(
+        chatId,
+        '🔄 *CẬP NHẬT PHƯƠNG TIỆN*\n\n' +
+          `📋 Phương tiện hiện tại: ${status.cronJob?.plate} (Loại ${status.cronJob?.vehicleType})\n\n` +
+          '🔻 Chọn loại xe mới:',
+        { ...options, parse_mode: 'Markdown' },
+      );
+    } catch (error) {
+      console.error('[ERROR] Start cron update:', error);
+      await this.bot.sendMessage(chatId, '❌ Có lỗi xảy ra. Vui lòng thử lại sau.');
+    }
+  }
+
+  /**
+   * Disable cron job
+   */
+  private async disableCronJob(chatId: number): Promise<void> {
+    try {
+      // Get user
+      const userResult = await this.userService.getUserByChatId(chatId);
+      if (!userResult.success) {
+        await this.bot.sendMessage(chatId, '❌ Không tìm thấy thông tin user.');
+        return;
+      }
+
+      const userId = userResult.data!.id;
+
+      // Disable cron job
+      const result = await this.cronJobService.disableCronJob(userId);
+
+      if (result.success) {
+        await this.notificationService.sendCronJobDisabledConfirmation(chatId, result.data!.plate);
+      } else {
+        await this.bot.sendMessage(chatId, '❌ Có lỗi xảy ra khi tắt tra cứu tự động.');
+      }
+    } catch (error) {
+      console.error('[ERROR] Disable cron job:', error);
+      await this.bot.sendMessage(chatId, '❌ Có lỗi xảy ra. Vui lòng thử lại sau.');
+    }
+  }
+
+  /**
    * Start the bot
    */
   start(): void {
     console.log('🤖 Telegram Bot started successfully!');
-    console.log('📋 Available commands: /start, /help, /menu, /lookup');
+
+    // Start CronService
+    this.cronService.start();
   }
 
   /**
@@ -768,7 +1127,25 @@ Nếu gặp vấn đề, vui lòng liên hệ qua /menu`;
    */
   stop(): void {
     console.log('🛑 Stopping Telegram Bot...');
+
+    // Stop CronService
+    this.cronService.stop();
+
     this.bot.stopPolling();
     console.log('✅ Telegram Bot stopped successfully!');
+  }
+
+  /**
+   * Get bot instance for external use
+   */
+  getBot(): TelegramBot {
+    return this.bot;
+  }
+
+  /**
+   * Get CronService instance for external use
+   */
+  getCronService(): CronService {
+    return this.cronService;
   }
 }
